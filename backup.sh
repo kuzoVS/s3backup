@@ -23,4 +23,29 @@ aws s3 cp "${TMPFILE}" \
     --region "${S3_REGION}"
 
 rm -f "${TMPFILE}"
-echo "$(date): Backup done — ${FILENAME}"
+
+echo "Rotating old backups (keeping last ${BACKUP_KEEP_COPIES:-7})..."
+KEEP=${BACKUP_KEEP_COPIES:-7}
+
+# Получаем список файлов отсортированных по дате (старые первые)
+FILES=$(aws s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" \
+    --endpoint-url "${S3_ENDPOINT}" \
+    --region "${S3_REGION}" \
+    | grep "backup_" \
+    | sort \
+    | awk '{print $4}')
+
+TOTAL=$(echo "$FILES" | grep -c "backup_" || true)
+
+if [ "$TOTAL" -gt "$KEEP" ]; then
+    DELETE_COUNT=$((TOTAL - KEEP))
+    echo "Deleting $DELETE_COUNT old backup(s)..."
+    echo "$FILES" | head -n "$DELETE_COUNT" | while read -r FILE; do
+        echo "Deleting: ${FILE}"
+        aws s3 rm "s3://${S3_BUCKET}/${S3_PREFIX}/${FILE}" \
+            --endpoint-url "${S3_ENDPOINT}" \
+            --region "${S3_REGION}"
+    done
+fi
+
+echo "$(date): Done. Total backups: $TOTAL, keeping: $KEEP"
