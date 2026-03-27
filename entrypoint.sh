@@ -13,12 +13,14 @@ cat > ~/.aws/config <<EOF
 region=${S3_REGION}
 EOF
 
+echo "Running initial backup on startup..."
+/backup.sh
+
 if [ -n "${SCHEDULE}" ]; then
     echo "Setting up cron: ${SCHEDULE}"
     env >> /etc/environment
     echo "${SCHEDULE} . /etc/environment; /backup.sh >> /var/log/backup.log 2>&1" | crontab -
     crond -f -l 2
 else
-    echo "No SCHEDULE set, running once..."
-    /backup.sh
+    echo "No SCHEDULE set, exiting after initial backup."
 fi
