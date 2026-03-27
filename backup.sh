@@ -16,7 +16,10 @@ pg_dump \
     -d "${POSTGRES_DB}" \
     | gzip > "${TMPFILE}"
 
-echo "Uploading to S3..."
+FILESIZE=$(du -sh "${TMPFILE}" | cut -f1)
+echo "Dump size: ${FILESIZE}"
+
+echo "Uploading ${FILENAME} (${FILESIZE}) to s3://${S3_BUCKET}/${S3_PREFIX}/..."
 aws s3 cp "${TMPFILE}" \
     "s3://${S3_BUCKET}/${S3_PREFIX}/${FILENAME}" \
     --endpoint-url "${S3_ENDPOINT}" \
@@ -27,7 +30,6 @@ rm -f "${TMPFILE}"
 echo "Rotating old backups (keeping last ${BACKUP_KEEP_COPIES:-7})..."
 KEEP=${BACKUP_KEEP_COPIES:-7}
 
-# Получаем список файлов отсортированных по дате (старые первые)
 FILES=$(aws s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" \
     --endpoint-url "${S3_ENDPOINT}" \
     --region "${S3_REGION}" \
@@ -48,4 +50,4 @@ if [ "$TOTAL" -gt "$KEEP" ]; then
     done
 fi
 
-echo "$(date): Done. Total backups: $TOTAL, keeping: $KEEP"
+echo "$(date): Done. Total backups: ${TOTAL}, keeping: ${KEEP}"
