@@ -1,5 +1,12 @@
 #!/bin/sh
 
+# Если уже запущен — не стартовать снова
+if [ -f /tmp/backup.lock ]; then
+    echo "Already running, exiting..."
+    exit 0
+fi
+touch /tmp/backup.lock
+
 mkdir -p ~/.aws
 
 cat > ~/.aws/credentials <<EOF
@@ -20,10 +27,10 @@ if [ -n "${SCHEDULE}" ]; then
     echo "Setting up cron: ${SCHEDULE}"
     env >> /etc/environment
     echo "${SCHEDULE} . /etc/environment; /backup.sh >> /var/log/backup.log 2>&1" | crontab -
-    
-    # Запускаем crond и держим контейнер живым через tail
+
     crond -l 2
     echo "Cron is running. Waiting..."
+    touch /var/log/backup.log
     tail -f /var/log/backup.log
 else
     echo "No SCHEDULE set, exiting after initial backup."
