@@ -20,7 +20,11 @@ if [ -n "${SCHEDULE}" ]; then
     echo "Setting up cron: ${SCHEDULE}"
     env >> /etc/environment
     echo "${SCHEDULE} . /etc/environment; /backup.sh >> /var/log/backup.log 2>&1" | crontab -
-    crond -f -l 2
+    
+    # Запускаем crond и держим контейнер живым через tail
+    crond -l 2
+    echo "Cron is running. Waiting..."
+    tail -f /var/log/backup.log
 else
     echo "No SCHEDULE set, exiting after initial backup."
 fi
