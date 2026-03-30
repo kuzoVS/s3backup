@@ -37,17 +37,21 @@ FILES=$(aws s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" \
     | sort \
     | awk '{print $4}')
 
-TOTAL=$(echo "$FILES" | grep -c "backup_" || true)
+TOTAL=$(echo "$FILES" | grep -c "backup_")
+DELETE_COUNT=$((TOTAL - KEEP))
 
-if [ "$TOTAL" -gt "$KEEP" ]; then
-    DELETE_COUNT=$((TOTAL - KEEP))
-    echo "Deleting $DELETE_COUNT old backup(s)..."
-    echo "$FILES" | head -n "$DELETE_COUNT" | while read -r FILE; do
+if [ "$DELETE_COUNT" -gt 0 ]; then
+    echo "Deleting ${DELETE_COUNT} old backup(s)..."
+    TO_DELETE=$(echo "$FILES" | head -n "$DELETE_COUNT")
+    for FILE in $TO_DELETE; do
         echo "Deleting: ${FILE}"
         aws s3 rm "s3://${S3_BUCKET}/${S3_PREFIX}/${FILE}" \
             --endpoint-url "${S3_ENDPOINT}" \
             --region "${S3_REGION}"
     done
+    REMAINING=$((TOTAL - DELETE_COUNT))
+else
+    REMAINING=$TOTAL
 fi
 
-echo "$(date): Done. Total backups: ${TOTAL}, keeping: ${KEEP}"
+echo "$(date): Done. Total backups: ${REMAINING}, keeping: ${KEEP}"
