@@ -1,12 +1,5 @@
 #!/bin/sh
 
-# Если уже запущен — не стартовать снова
-if [ -f /tmp/backup.lock ]; then
-    echo "Already running, exiting..."
-    exit 0
-fi
-touch /tmp/backup.lock
-
 mkdir -p ~/.aws
 
 cat > ~/.aws/credentials <<EOF
@@ -30,8 +23,11 @@ if [ -n "${SCHEDULE}" ]; then
 
     crond -l 2
     echo "Cron is running. Waiting..."
-    touch /var/log/backup.log
-    tail -f /var/log/backup.log
+
+    # Держим контейнер живым без tail
+    while true; do
+        sleep 3600
+    done
 else
     echo "No SCHEDULE set, exiting after initial backup."
 fi
